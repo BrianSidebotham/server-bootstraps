@@ -9,15 +9,54 @@ scriptdir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 basedir="${scriptdir}"/../..
 source "${basedir}"/lib/functions.sh
 
+# Function: usage
+# Generates a message on the executing terminal that shows basic usage
+# instructions for invoking this script
+usage() {
+    echo "usage: $0 [OPTIONS]"
+    echo "OPTIONS:"
+    echo "    --os-patch: patch operating system (does not perform reboots if required)"
+    echo "    "
+}
+
 # The script must be run as the super user in order to do anything meaningful
 must_be_root_or_exit
 
-# Some people want to patch on building...
-# must_succeed_or_exit \
-#     yum -y update
+# Default options
+os_patch=0
 
-# If using a proxy for internet access, yum will need to be configured to
+# Gobble up all of the input arguments
+while [ $# -gt 0 ]; do
+    opt=${1}
+    okey=$(echo "${1}" | cut -d= -f1)
+    ovalue=$(echo "${1}" | cut -sd= -f2)
+    case ${okey} in
+        "--os-patch")
+            os_patch=1
+            ;;
+        *)
+            error_exit "Unsupported argument ${okey}"
+    esac    
+    shift
+done
+
+# Process the input arguments for the script
+if option ${os_patch}; then
+    echo "Patching Operating System"
+fi
+
+exit 0
+
+# TODO: If using a proxy for internet access, yum will need to be configured to
 # use it before we start using yum
+
+# Some people want to patch on building, but managing required reboots due to
+# updates is a pain from a single script. The default is therefore NOT to
+# patch.
+if option ${os_patch}; then
+    must_succeed_or_exit \
+        yum -y update
+fi
 
 # yum and dnf are both available on CentOS8 - the recommended approach from
 # SaltStack is to use yum to install - we use the python3 repository. You're
