@@ -1,4 +1,3 @@
-# Useful functions that can be reused throughout the server bootstraps
 
 # Global variables for including scripts to use as well as internal use
 sb_text_black="[30m"
@@ -147,112 +146,25 @@ must_succeed_or_exit() {
     fi
 }
 
-
-# Function: option
-# Returns:  Exit code 0 (true/success) or 1 (false) depending on the option setting
-# Example:  if option ${use_proxy}; then
-#               export https_proxy=${proxy}  
-#           fi
-#
-# Provides an easier interface to test when testing for boolean options.
-# Runs in a subshell and exits with code 0 (success) if the option is NOT
-# set to 0, otherwise exits with code 1 to indicate false.
-#
-option() (
-    # If there were no arguments passed, or the argument passed was an empty
-    # value, exit false
-    if [ $# -lt 1 ] || [ "${1}X" = "X" ]; then
+detect_os() {
+    if [ ! -e /etc/os-release ]; then
+        echo "Unable to determine OS" >&2
         exit 1
     fi
 
-    # Otherwise assume the following settings as false, everything else as true
-    if [ "${1}X" = "0X" ] || [ "${1}X" = "falseX" ]; then
-        exit 1
-    else
-        exit 0
-    fi
-)
-
-
-# Function detect_operating_system
-#
-# Detect which operating system we're running on which can set various global
-# variables for the scripts to use
-#
-detect_operating_system() {
-    sb_operating_system_detected=0
-
-    _probe_fedora
-
-    if [ ${sb_operating_system_detected} -eq 1 ]; then
-        return
-    fi
-
-    sb_operating_system=unknown
-    sb_operating_system_release=unknown
-    error_exit "Cannot determine operating system type"
+    __os_name=$(source /etc/os-release; echo "${NAME}")
+    __os_id=$(source /etc/os-release; echo "${ID}")
+    __os_version_id=$(source /etc/os-release; echo "${VERSION_ID}")
 }
 
-
-# Function error_exit
-# Parameters: 1. The error message
-#             2. (Optional) The code to exit the script with
-#
-# Print an error on stderr in Red and then exit with an optional error code.
-# If no code is set, 1 is used
-#
-error_exit() {
-    local error_code=1
-
-    if [ $# -gt 1 ]; then
-        error_code=$2
-    fi
-
-    loge "$1"
-    exit ${error_code}
+os_name() {
+    echo ${__os_name}
 }
 
-
-# Function:  _probe_fedora
-# Returns: sb_operating_system
-#          sb_operating_system_release
-#          sb_package_manager
-#          sb_exe_yum
-#          sb_exe_dnf
-#
-# Probe the operating system to see if it is a Fedora release
-_probe_fedora() {
-    if ! operating_system_is_fedora ; then
-        return
-    fi
-
-    # This is Fedora, so start setting up the global namespace
-    sb_operating_system_detected=1
-    sb_operating_system=fedora
-    sb_operating_system_release=$(fedora_release)
-    sb_package_manager=yum
-    sb_exe_yum=$(which yum)
-    sb_exe_dnf=$(which dnf)
+os_id() {
+    echo ${__os_id}
 }
 
-# Function: operating_system_is_fedora (Subshell)
-# Returns: 0 exit code when system is fedora, and 1 otherwise
-# Usage: if operating_system_is_fedora; then
-#            do_fedora_specific_stuff
-#        fi
-#
-operating_system_is_fedora() (
-    if [ -f /etc/system-release ] && [ "$(cat /etc/system-release | grep -i fedora)X" != X ]; then
-        exit 0        
-    fi
-
-    exit 1
-)
-
-# Function: fedora_release
-# Returns: stdout: The release number of this fedora install
-fedora_release() {
-    cat /etc/system-release-cpe | cut -d: -f5
+os_version_id() {
+    echo ${__os_version_id}
 }
-
-detect_operating_system
